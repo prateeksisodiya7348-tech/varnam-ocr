@@ -1,0 +1,41 @@
+name: Keep alive
+
+# Render's free web service suspends after ~15 minutes of inactivity, and the
+# next request then waits 30-60s for the container to boot. A user opening the
+# demo after a quiet period sees a spinner long enough to assume it is broken.
+#
+# This workflow pings the liveness endpoint every 10 minutes so the instance
+# stays warm. It deliberately hits /health/live (not /health/ready) because
+# liveness does not load the model - the point is to keep the container alive,
+# not to exercise inference 144 times a day.
+#
+# Caveats, stated honestly:
+#   * GitHub throttles scheduled workflows and can delay them by 10+ minutes
+#     under load, so this is best-effort, not a guarantee.
+#   * It costs nothing for a public repository.
+#   * The durable fix is a paid instance that does not sleep.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: keepalive
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping the API
+        run: |
+          URL="https://varnam-ocr-api.onrender.com/health/live"
+          # A cold start can take 60s, so allow a generous timeout and do not
+          # fail the workflow - a missed ping is not a build failure.
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 "$URL" || echo "000")
+          echo "GET $URL -> $code"
+          if [ "$code" != "200" ]; then
+            echo "::warning::keep-alive ping returned $code (service may be cold or redeploying)"
+          fi
