@@ -1,12 +1,24 @@
-# Render blueprint for the OCR API.
+# Render Blueprint - creates the database AND the API in one click.
 #
-# Apply with: Render Dashboard -> New -> Blueprint -> point at this repo.
+# The point of this file is that a deploy needs NO manually copied secrets:
+# Render provisions the Postgres instance and injects its connection string into
+# DATABASE_URL via `fromDatabase`. The only variable left to change by hand is
+# CORS_ORIGINS, and only after the frontend exists.
 #
-# Free-tier reality, encoded here rather than in a wiki page nobody reads:
-#   * 512 MB RAM  -> one uvicorn worker, one ORT thread, INT8 model only.
+# Free-tier reality, encoded here rather than in a wiki nobody reads:
+#   * 512 MB RAM -> one uvicorn worker, one ORT thread, float32 model (16 MB).
 #   * sleeps after ~15 min idle -> /health/ready gates traffic while it boots.
-#   * no persistent disk -> uploads go to R2 (or are not retained at all).
-#   * single instance -> in-process rate limiting is exact (see LIMITATIONS.md).
+#   * no persistent disk -> uploads live on local disk and vanish on redeploy.
+#     OCR results are in Postgres, so the app keeps working.
+#   * free Postgres expires after 30 days unless upgraded - see docs/LIMITATIONS.md.
+
+databases:
+  - name: varnam-ocr-db
+    databaseName: varnam
+    user: varnam
+    plan: free
+    region: singapore
+
 services:
   - type: web
     name: varnam-ocr-api
@@ -34,23 +46,13 @@ services:
         value: "2000"
       - key: RATE_LIMIT_PER_MINUTE
         value: "20"
-      # Local disk on a free instance is ephemeral: uploaded images disappear on
-      # redeploy, but OCR results live in Postgres so the app keeps working.
-      # Switch to `r2` once the four R2_* variables below are filled in.
       - key: STORAGE_BACKEND
         value: local
-      # Set these in the dashboard; sync:false keeps them out of git.
+      # Injected by Render from the database above - never copied by hand.
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: varnam-ocr-db
+          property: connectionString
+      # Replace with the Vercel URL after the frontend is deployed.
       - key: CORS_ORIGINS
-        sync: false
-      - key: R2_ACCOUNT_ID
-        sync: false
-      - key: R2_ACCESS_KEY_ID
-        sync: false
-      - key: R2_SECRET_ACCESS_KEY
-        sync: false
-      - key: R2_BUCKET
-        sync: false
-      - key: API_SHARED_SECRET
-        sync: false
+        value: http://localhost:3000
