@@ -15,6 +15,11 @@ pydantic-settings==2.7.0
 # --- persistence -----------------------------------------------------------
 sqlmodel==0.0.22
 SQLAlchemy==2.0.36
+# Postgres driver. SQLAlchemy maps a plain `postgresql://` URL to psycopg2, so
+# this package is what actually connects to Neon/Render Postgres. Without it the
+# container starts, then dies on the first DB call with ModuleNotFoundError.
+# binary wheel: no libpq build toolchain needed in the image.
+psycopg2-binary==2.9.10
 
 # --- imaging / numerics ----------------------------------------------------
 pillow==11.1.0

@@ -37,7 +37,7 @@ services:
         condition: service_healthy
     environment:
       APP_ENV: development
-      DATABASE_URL: postgresql+psycopg://varnam:varnam@db:5432/varnam
+      DATABASE_URL: postgresql://varnam:varnam@db:5432/varnam
       VARNAM_ENGINE: fake
       MODEL_DIR: /app/models
       CORS_ORIGINS: http://localhost:3000

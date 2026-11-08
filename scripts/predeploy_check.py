@@ -88,6 +88,27 @@ if dockerfile.exists():
     require('"--workers"' in text, "Dockerfile CMD does not pin --workers")
     require('"--workers", "1"' in text, "uvicorn must run a single worker on 512MB")
 
+# --------------------------------------------------------------- db driver
+# A Postgres URL without a driver installed is a guaranteed runtime crash: the
+# image builds, the service starts, then the first DB call raises
+# ModuleNotFoundError. Catch it here instead of 8 minutes into a cloud build.
+requirements = ROOT / "services" / "api" / "requirements.txt"
+if requirements.exists():
+    pinned = requirements.read_text(encoding="utf-8")
+    if blueprint:
+        env_map = {
+            item.get("key"): item
+            for item in (blueprint.get("services") or [{}])[0].get("envVars", [])
+        }
+        uses_postgres = "DATABASE_URL" in env_map and "fromDatabase" in env_map["DATABASE_URL"]
+        if uses_postgres:
+            require(
+                "psycopg2-binary" in pinned or "psycopg[" in pinned,
+                "DATABASE_URL points at Postgres but requirements.txt has no driver "
+                "(add psycopg2-binary)",
+            )
+            notes.append("db driver: present")
+
 # ------------------------------------------------------------------- artifacts
 model = ROOT / "services" / "api" / "models" / "rec.onnx"
 charset = ROOT / "services" / "api" / "models" / "charset.txt"
