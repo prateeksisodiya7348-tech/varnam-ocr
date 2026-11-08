@@ -15,11 +15,25 @@ import { apiErrorSchema, ocrResultSchema, type OcrResult } from "./types";
 /**
  * Base URL of the OCR service.
  *
- * On Vercel this is `NEXT_PUBLIC_API_BASE_URL`. The fallback points at the local
- * dev server so `pnpm dev` works with no env file at all.
+ * Empty string means **same origin**: the browser calls `/v1/ocr` on whatever
+ * host served the page. That is how the deployed image works - the API serves
+ * the built frontend, so there is no second host to point at.
+ *
+ * Set `NEXT_PUBLIC_API_BASE_URL` only for split deployments (frontend on Vercel,
+ * API on Render, for example), or for local dev where the API runs on another
+ * port.
+ *
+ * Why the old fallback was removed: it defaulted to `http://127.0.0.1:8000`,
+ * which gets baked into the JS bundle at build time. A production build without
+ * the variable then shipped code that tried to call the *visitor's* localhost.
+ * Relative URLs cannot fail that way.
  */
+const configuredBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "http://127.0.0.1:8000";
+  configuredBaseUrl && configuredBaseUrl.length > 0
+    ? configuredBaseUrl.replace(/\/$/, "")
+    : "";
 
 /** Error carrying the API's stable machine-readable code. */
 export class ApiRequestError extends Error {
