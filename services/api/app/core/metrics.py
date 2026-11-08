@@ -69,8 +69,10 @@ class Metrics:
             A UTF-8 text payload with one line per metric.
         """
         with self._lock:
-            lines = ["# HELP varnam_ocr_total OCR requests handled by this instance",
-                     "# TYPE varnam_ocr_total counter"]
+            lines = [
+                "# HELP varnam_ocr_total OCR requests handled by this instance",
+                "# TYPE varnam_ocr_total counter",
+            ]
             lines.extend(f"{name} {value}" for name, value in sorted(self._counters.items()))
 
             lines.append("# TYPE ocr_latency_ms histogram")

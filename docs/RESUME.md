@@ -19,8 +19,8 @@ about ten seconds.
   service, running entirely on free-tier infrastructure (Vercel, Render, Neon, R2).
 
 - Trained a CRNN + CTC recognizer on IIIT-ILST, CVIT-OCR and DHCD, exported to
-  INT8 ONNX (17 MB → 4 MB) and added a quantization parity gate that fails the
-  export build when predictions diverge by more than 5%.
+  ONNX, and added both a quantization parity gate and a load-test that falls back
+  to float32 when the INT8 graph cannot run on the CPU provider.
 
 - Achieved **[X]% CER on printed and [Y]% on handwritten held-out slices**,
   measured per slice by a reproducible evaluation CLI wired to the same pipeline

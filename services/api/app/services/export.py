@@ -12,8 +12,8 @@ import html
 from dataclasses import dataclass, field
 
 import numpy as np
-
 from devanagari_text.normalize import devanagari_ratio, normalize_text
+
 from app.services.engine import OcrEngine
 from app.services.segmentation import Box, LineCandidate
 
@@ -98,7 +98,8 @@ def _split_words(line: LineCandidate, mask_boxes: list[Box]) -> list[WordResult]
 
     for index, box in enumerate(mask_boxes):
         share = box.width / total_width
-        take = len(characters) - cursor if index == len(mask_boxes) - 1 else round(len(characters) * share)
+        remaining = len(characters) - cursor
+        take = remaining if index == len(mask_boxes) - 1 else round(len(characters) * share)
         chunk = "".join(characters[cursor : cursor + take]).strip()
         cursor += take
         if chunk:
@@ -122,7 +123,7 @@ def run_page(gray: np.ndarray, engine: OcrEngine, *, scale: float = 1.0) -> Page
     ``devanagari_text.normalize``) and guarantees the API never returns text
     that is invalid to paste into a document editor.
     """
-    import time  # noqa: PLC0415 - only needed for the timing measurement
+    import time
 
     started = time.perf_counter()
     candidates = engine.recognize(gray)

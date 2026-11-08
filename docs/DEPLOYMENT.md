@@ -77,7 +77,7 @@ disappear on redeploy.
 
 | Option | How | Trade-off |
 | --- | --- | --- |
-| Baked into image | commit `rec.onnx` to the image | Free, but repo grows ~4MB |
+| Baked into image | commit `rec.onnx` to the image | Free, but repo grows ~16MB |
 | Git LFS | `git lfs track "*.onnx"` | Clean repo, Render must fetch LFS |
 | Download at build | `RUN curl -o /app/models/rec.onnx $MODEL_URL` | Needs a public URL + checksum |
 

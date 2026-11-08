@@ -8,7 +8,6 @@ each combining-mark case is pinned explicitly.
 from __future__ import annotations
 
 import pytest
-
 from devanagari_text.normalize import (
     contains_devanagari,
     devanagari_ratio,
@@ -34,14 +33,14 @@ def test_whitespace_normalization(raw: str, expected: str) -> None:
 @pytest.mark.parametrize(
     "text",
     [
-        "कि",          # i-matra (combining vowel sign)
-        "क्‍ष",        # virama + ZWJ conjunct
-        "ज्ञ",         # jna conjunct
-        "र्क",         # reph (ra + virama above ka)
-        "कँ",          # chandrabindu
-        "कः",          # visarga
-        "क़",          # nukta
-        "हिन्दी।",     # danda terminator
+        "कि",  # i-matra (combining vowel sign)
+        "क्‍ष",  # virama + ZWJ conjunct
+        "ज्ञ",  # jna conjunct
+        "र्क",  # reph (ra + virama above ka)
+        "कँ",  # chandrabindu
+        "कः",  # visarga
+        "क़",  # nukta
+        "हिन्दी।",  # danda terminator
     ],
 )
 def test_combining_marks_are_preserved(text: str) -> None:

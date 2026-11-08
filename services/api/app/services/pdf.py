@@ -9,6 +9,7 @@ render scale is derived from the page size rather than hardcoded.
 from __future__ import annotations
 
 import io
+from typing import Any
 
 from app.core.errors import InvalidUploadError, UnsupportedMediaError
 from app.core.logging import get_logger
@@ -40,17 +41,17 @@ def render_pages(data: bytes, *, max_pages: int) -> list[bytes]:
     so the size cost is acceptable.
     """
     try:
-        import pypdfium2 as pdfium  # noqa: PLC0415 - optional dependency
+        import pypdfium2 as pdfium
     except ImportError as exc:
         raise UnsupportedMediaError(
             "PDF support is not enabled on this deployment. Upload page images instead."
         ) from exc
 
-    from app.core.errors import PayloadTooLargeError  # noqa: PLC0415 - narrow scope
+    from app.core.errors import PayloadTooLargeError
 
     try:
         document = pdfium.PdfDocument(io.BytesIO(data))
-    except Exception as exc:  # noqa: BLE001 - the backend raises its own types
+    except Exception as exc:
         raise InvalidUploadError("The PDF could not be parsed.") from exc
 
     try:
@@ -66,7 +67,7 @@ def render_pages(data: bytes, *, max_pages: int) -> list[bytes]:
             width, height = page.get_size()
             # pdfium renders at 72 DPI at scale 1.0, so this ratio lands the long
             # edge on our target regardless of the physical page size.
-            scale = _TARGET_LONG_EDGE / max(1.0, max(width, height))
+            scale = _TARGET_LONG_EDGE / max(1.0, width, height)
             # Clamp: a tiny page must not be upscaled into blur, and a huge one
             # must not be rendered at a scale that allocates gigabytes.
             scale = max(1.0, min(scale, 6.0))
@@ -79,7 +80,7 @@ def render_pages(data: bytes, *, max_pages: int) -> list[bytes]:
         document.close()
 
 
-def _to_png(bitmap) -> bytes:
+def _to_png(bitmap: Any) -> bytes:
     """Encode a pdfium bitmap as PNG.
 
     Args:
@@ -88,7 +89,7 @@ def _to_png(bitmap) -> bytes:
     Returns:
         PNG bytes.
     """
-    import io as _io  # noqa: PLC0415 - local alias keeps the module import surface tiny
+    import io as _io
 
     buffer = _io.BytesIO()
     bitmap.to_pil().convert("RGB").save(buffer, format="PNG", optimize=False)

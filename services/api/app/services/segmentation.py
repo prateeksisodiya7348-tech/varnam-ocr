@@ -210,11 +210,7 @@ def segment_words(mask: np.ndarray, line: Box) -> list[Box]:
         else:
             grouped.append([start, end])
 
-    return [
-        Box(x0=x0, y0=line.y0, x1=x1, y1=line.y1)
-        for x0, x1 in grouped
-        if x1 - x0 >= 2
-    ]
+    return [Box(x0=x0, y0=line.y0, x1=x1, y1=line.y1) for x0, x1 in grouped if x1 - x0 >= 2]
 
 
 def sort_reading_order(lines: list[LineCandidate]) -> list[LineCandidate]:

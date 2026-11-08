@@ -7,7 +7,6 @@ segmentation was kept dependency-free.
 from __future__ import annotations
 
 import numpy as np
-
 from app.services.preprocess import binarize, ensure_dark_text
 from app.services.segmentation import (
     Box,
@@ -19,7 +18,9 @@ from app.services.segmentation import (
 )
 
 
-def _page_with_bars(rows: list[tuple[int, int, int, int]], size: tuple[int, int] = (400, 300)) -> np.ndarray:
+def _page_with_bars(
+    rows: list[tuple[int, int, int, int]], size: tuple[int, int] = (400, 300)
+) -> np.ndarray:
     """Create a white page with black bars.
 
     Args:

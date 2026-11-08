@@ -7,7 +7,8 @@
 | Task | Line-level optical character recognition |
 | Script | Devanagari (Hindi, Marathi, Nepali, Sanskrit) |
 | Architecture | CRNN: 4x conv blocks + 2-layer BiLSTM + linear CTC head |
-| Parameters | ~4.2M for a ~200-class charset (~17MB float32, ~4MB INT8). The exact count is printed by `ml.export_onnx` via `count_parameters`; do not quote a number the script has not printed. |
+| Parameters | 4,160,025 for the 89-class charset (~16.6MB float32). Exact count printed by `ml.export_onnx`; do not quote a number the script has not printed. |
+| Shipped artifact | `rec.onnx`, 15.9 MB **float32**. INT8 dynamic quantization was attempted and rejected: it emits `ConvInteger` nodes that onnxruntime's CPU provider does not implement, so the exporter load-tests the graph and falls back to float. |
 | Input | 1 channel, 32 x 320 px, normalized to [-1, 1] |
 | Output | Per-time-step class logits, CTC decoded |
 | Runtime | onnxruntime CPU, 1 intra-op thread |
@@ -34,11 +35,22 @@ Expected composition, listed by the manifest's `slice` column:
 
 | Slice | Source | Notes |
 | --- | --- | --- |
+| `synthetic` | `scripts/gen_synthetic.ps1` (GDI+ render of `data/corpus_hi.txt`) | Correctly shaped Devanagari, random font size, jitter, danda. Used to bootstrap a model and to verify the full train→export→serve path. |
 | `printed_clean` | IIIT-ILST / synthetic renderings | Clean digital renders |
 | `printed_scan` | CVIT-OCR, scanned books | Noise, skew, bleed-through |
 | `handwritten` | Devanagari Handwritten Character Dataset | Isolated characters; needs line composition |
 | `phone_photo` | Self-collected, labelled via the feedback loop | Real deployment distribution |
 | `mixed_layout` | Forms, receipts | Numbers and Latin tokens mixed in |
+
+**On the synthetic slice:** a model trained only on GDI renders learns glyph
+shapes and spacing but never sees scanner noise, paper texture, camera blur or
+pen strokes. Expect CER on synthetic to be far better than on real photographs.
+Report the slice it was measured on or the number means nothing.
+
+**Why GDI and not Pillow:** Pillow on Windows ships without libraqm, so it cannot
+shape Devanagari — it draws an i-matra after the consonant instead of before it.
+Those images look plausible to a non-reader and are wrong to the model. GDI+ uses
+Uniscribe and shapes correctly.
 
 **Licence:** each upstream dataset keeps its own licence. Check before shipping
 weights trained on them, and record the exact commit or snapshot hash used.

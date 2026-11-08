@@ -10,7 +10,7 @@ import functools
 from pathlib import Path
 from typing import Literal
 
-from pydantic import field_validator
+from pydantic import ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 EngineName = Literal["fake", "onnx", "auto"]
@@ -74,7 +74,7 @@ class Settings(BaseSettings):
 
     @field_validator("database_url")
     @classmethod
-    def _require_explicit_db_in_prod(cls, value: str, info) -> str:
+    def _require_explicit_db_in_prod(cls, value: str, info: ValidationInfo) -> str:
         """Fail fast when production would silently fall back to SQLite.
 
         A SQLite file on an ephemeral Render container loses every OCR result

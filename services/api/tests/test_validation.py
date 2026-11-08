@@ -5,10 +5,9 @@ from __future__ import annotations
 import io
 
 import pytest
-from PIL import Image
-
 from app.core.errors import InvalidUploadError, PayloadTooLargeError, UnsupportedMediaError
 from app.services.validation import sniff_kind, validate_upload
+from PIL import Image
 
 
 def _png_bytes(size: tuple[int, int] = (64, 32)) -> bytes:

@@ -116,7 +116,7 @@ def binarize(gray: np.ndarray, *, invert: bool = False) -> np.ndarray:
         return np.zeros(gray.shape, dtype=bool)
 
     probabilities = histogram / total
-    omega = np.cumsum(probabilities)             # class-1 cumulative weight
+    omega = np.cumsum(probabilities)  # class-1 cumulative weight
     mu = np.cumsum(probabilities * np.arange(256))  # class-1 cumulative mean
     mu_total = mu[-1]
 

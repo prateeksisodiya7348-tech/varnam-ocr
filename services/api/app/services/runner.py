@@ -11,7 +11,6 @@ from __future__ import annotations
 import threading
 from dataclasses import dataclass
 
-import numpy as np
 from sqlmodel import Session
 
 from app.config import Settings
@@ -180,7 +179,7 @@ def process_image_upload(
     # hangs until the platform times out at the edge with an opaque error.
     acquired = _INFERENCE_LOCK.acquire(timeout=settings.request_timeout_seconds)
     if not acquired:
-        from app.core.errors import EngineBusyError  # noqa: PLC0415 - avoid cycle at import time
+        from app.core.errors import EngineBusyError
 
         raise EngineBusyError("The OCR engine is busy with another page. Retry shortly.")
 
@@ -259,7 +258,7 @@ def process_pdf_upload(
         the HTTP response returns immediately - a required property because a
         10-page scan takes far longer than any free-tier request timeout.
     """
-    from app.services.validation import count_pdf_pages  # noqa: PLC0415 - optional backend
+    from app.services.validation import count_pdf_pages
 
     upload = validate_upload(data, max_bytes=settings.max_upload_mb * 1_048_576)
     page_count = count_pdf_pages(upload.data, max_pages=settings.max_pages_per_job)
@@ -281,7 +280,9 @@ def process_pdf_upload(
     return job.id
 
 
-def process_pdf_job(job_id: str, *, settings: Settings, storage: StorageBackend, engine: OcrEngine) -> None:
+def process_pdf_job(
+    job_id: str, *, settings: Settings, storage: StorageBackend, engine: OcrEngine
+) -> None:
     """Render and recognize every page of a queued PDF job.
 
     Args:
@@ -294,9 +295,10 @@ def process_pdf_job(job_id: str, *, settings: Settings, storage: StorageBackend,
     the request-scoped session is already closed. Reusing it would raise
     ``ResourceClosedError`` in a background thread.
     """
+    from sqlmodel import Session as ModelSession
+
     from app.db import get_engine
     from app.services.pdf import render_pages
-    from sqlmodel import Session as ModelSession
 
     with ModelSession(get_engine()) as session:
         job = session.get(OcrJob, job_id)
@@ -346,10 +348,12 @@ def process_pdf_job(job_id: str, *, settings: Settings, storage: StorageBackend,
             job.result = {
                 "text": "\n\n".join(texts),
                 "pages": page_payloads,
-                "mean_confidence": round(sum(confidences) / len(confidences), 4) if confidences else 0.0,
+                "mean_confidence": (
+                    round(sum(confidences) / len(confidences), 4) if confidences else 0.0
+                ),
             }
             job.duration_ms = total_ms
-        except Exception as exc:  # noqa: BLE001 - must persist a terminal state
+        except Exception as exc:
             # Any failure inside a background task is invisible to the client
             # unless it is written to the row, so we always record it.
             job.status = JobStatus.FAILED

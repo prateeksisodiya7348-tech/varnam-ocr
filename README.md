@@ -81,7 +81,7 @@ upload
 | Styling | Tailwind CSS v4 | CSS-first tokens; no `tailwind.config.js` to drift |
 | Validation | Zod at every network boundary | Prevents `undefined` leaking into components after a schema change |
 | API | FastAPI, Pydantic v2 | Typed async framework, generated OpenAPI doubles as the client contract |
-| Inference | ONNX Runtime, CRNN + CTC, INT8 | ~4MB INT8 model (~4.2M params), CPU-only, no PyTorch in the serving image |
+| Inference | ONNX Runtime, CRNN + CTC | 15.9 MB float32 (~4.2M params), CPU-only, no PyTorch in the serving image. INT8 is attempted at export and falls back when the CPU provider cannot run the quantized graph. |
 | Persistence | SQLModel + Postgres (SQLite locally) | One class defines table and response shape |
 | Storage | Local disk (dev), Cloudflare R2 (prod) | R2 has zero egress cost |
 | Testing | pytest + Vitest | Model-free tests; the whole API suite runs in ~1s |
@@ -167,7 +167,7 @@ python -m ml.export_onnx --checkpoint artifacts/best.pt \
 python -m ml.verify
 ```
 
-The export step **fails the build** if INT8 quantization changes more than 5% of predictions — that is the guard against shipping a silently broken model.
+The export step **fails** if quantization changes more than 5% of predictions, and it **verifies the quantized graph actually loads** before shipping it. Dynamic INT8 rewrites Conv into `ConvInteger`, which onnxruntime's CPU provider does not implement — so the exporter falls back to the float graph rather than shipping a model that crashes at startup.
 
 ---
 

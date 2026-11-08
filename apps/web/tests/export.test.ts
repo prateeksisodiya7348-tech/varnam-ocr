@@ -60,6 +60,10 @@ describe("hocr export", () => {
   it("escapes markup so output cannot be injected", () => {
     const result = fixture();
     result.lines[0]!.text = "<img src=x onerror=alert(1)>";
+    // Word spans take precedence over the line text when both exist, so clear
+    // them first - otherwise this test never exercises the line-level escaping
+    // path and would pass even if that path stopped escaping.
+    result.lines[0]!.words = [];
     const document = toHocr(result);
     expect(document).not.toContain("<img src=x");
     expect(document).toContain("&lt;img");

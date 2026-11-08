@@ -94,7 +94,11 @@ def install_exception_handlers(app: FastAPI) -> None:
     async def _handle_varnam_error(request: Request, exc: VarnamError) -> JSONResponse:
         headers: dict[str, str] = {}
         # 503/429 must tell well-behaved clients (and CDNs) when to come back.
-        if exc.http_status in (status.HTTP_503_SERVICE_UNAVAILABLE, status.HTTP_429_TOO_MANY_REQUESTS):
+        retryable_statuses = (
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+        if exc.http_status in retryable_statuses:
             headers["Retry-After"] = "5"
         return JSONResponse(
             status_code=exc.http_status,

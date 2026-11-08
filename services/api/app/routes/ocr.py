@@ -10,23 +10,25 @@ Latency budgets (documented here so reviewers do not have to guess):
 
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Query, Request, UploadFile, status
 from fastapi.responses import PlainTextResponse, Response
 from sqlmodel import Session
 
+from app.core.errors import InvalidUploadError, NotFoundError, RateLimitedError
 from app.db import get_session
 from app.dependencies import AppServices, ServicesDep
 from app.models.db import JobStatus, OcrJob
 from app.models.schemas import (
+    BBox,
     ErrorResponse,
     JobAcceptedResponse,
     JobStatusResponse,
+    LineOut,
     OcrResponse,
     PageOut,
 )
-from app.core.errors import InvalidUploadError, NotFoundError, RateLimitedError
 from app.services import runner
 from app.services.export import to_hocr, to_plain_text
 
@@ -38,6 +40,34 @@ SessionDep = Annotated[Session, Depends(get_session)]
 # proportional to CPU seconds, not to requests, which is what actually breaks.
 _COST_SINGLE = 1.0
 _COST_PDF = 4.0
+
+
+def _lines_from_payload(payload: dict[str, Any]) -> list[LineOut]:
+    """Rebuild typed line objects from a stored job result.
+
+    Args:
+        payload: The ``result`` JSON column of a job.
+
+    Returns:
+        Lines with boxes and confidence. Word boxes are not persisted, so they
+        come back empty rather than being invented.
+
+    Why this exists: the stored form is plain JSON. Leaving raw dicts in place
+    type-checks as ``list[dict]`` and silently bypasses the response schema, so a
+    change to ``LineOut`` would not be caught by mypy.
+    """
+    lines: list[LineOut] = []
+    for raw in payload.get("lines", []):
+        x0, y0, x1, y1 = raw["bbox"]
+        lines.append(
+            LineOut(
+                text=raw["text"],
+                bbox=BBox(x0=x0, y0=y0, x1=x1, y1=y1),
+                confidence=raw["confidence"],
+                words=[],
+            )
+        )
+    return lines
 
 
 def _enforce_rate_limit(services: AppServices, request: Request, *, cost: float) -> None:
@@ -125,7 +155,7 @@ def create_ocr(
     payload = runner.to_response(
         job,
         result.page,
-        original_size=tuple((job.result or {}).get("original_size", [0, 0])),  # type: ignore[arg-type]
+        original_size=tuple((job.result or {}).get("original_size", [0, 0])),
     )
 
     if export == "txt":
@@ -143,7 +173,11 @@ def create_ocr(
     "/ocr/pdf",
     response_model=JobAcceptedResponse,
     status_code=status.HTTP_202_ACCEPTED,
-    responses={413: {"model": ErrorResponse}, 415: {"model": ErrorResponse}, 429: {"model": ErrorResponse}},
+    responses={
+        413: {"model": ErrorResponse},
+        415: {"model": ErrorResponse},
+        429: {"model": ErrorResponse},
+    },
     summary="Queue a PDF for asynchronous OCR",
 )
 def create_pdf_job(
@@ -231,20 +265,7 @@ def get_job(job_id: str, session: SessionDep) -> JobStatusResponse:
             job_id=job.id,
             engine=job.engine,
             text=payload.get("text", ""),
-            lines=[
-                {
-                    "text": line["text"],
-                    "bbox": {
-                        "x0": line["bbox"][0],
-                        "y0": line["bbox"][1],
-                        "x1": line["bbox"][2],
-                        "y1": line["bbox"][3],
-                    },
-                    "confidence": line["confidence"],
-                    "words": [],
-                }
-                for line in payload.get("lines", [])
-            ],
+            lines=_lines_from_payload(payload),
             page=PageOut(
                 width=original[0] if original else 0,
                 height=original[1] if original else 0,

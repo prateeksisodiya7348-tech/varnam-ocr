@@ -107,10 +107,6 @@ class TokenBucketLimiter:
         if now - self._last_sweep < 300:
             return
         self._last_sweep = now
-        stale = [
-            key
-            for key, bucket in self._buckets.items()
-            if now - bucket.updated_at > 600
-        ]
+        stale = [key for key, bucket in self._buckets.items() if now - bucket.updated_at > 600]
         for key in stale:
             del self._buckets[key]

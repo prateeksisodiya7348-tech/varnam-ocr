@@ -20,6 +20,7 @@ from typing import Protocol, runtime_checkable
 
 import numpy as np
 
+from app.config import Settings
 from app.core.errors import EngineUnavailableError
 from app.core.logging import get_logger
 from app.services.preprocess import binarize, ensure_dark_text
@@ -158,7 +159,7 @@ class OnnxCtcEngine:
             raise EngineUnavailableError(f"Charset file not found at {charset_path}.")
 
         try:
-            import onnxruntime as ort  # noqa: PLC0415 - heavy optional import
+            import onnxruntime as ort
         except ImportError as exc:
             raise EngineUnavailableError(
                 "onnxruntime is not installed; install the 'onnx' extra."
@@ -258,10 +259,10 @@ class OnnxCtcEngine:
         characters: list[str] = []
         confidences: list[float] = []
         previous = -1
-        for index, probability in zip(best, best_prob, strict=True):
-            index = int(index)
+        for raw_index, probability in zip(best, best_prob, strict=True):
+            index = int(raw_index)
             # CTC collapse: drop repeats, then drop blanks (index 0).
-            if index != previous and index != 0:
+            if index not in (previous, 0):
                 characters.append(self._char_at(index))
                 confidences.append(float(probability))
             previous = index
@@ -291,7 +292,7 @@ class OnnxCtcEngine:
         errors. Padding with paper-white instead is what the model saw in
         training.
         """
-        from PIL import Image  # noqa: PLC0415 - local import keeps module import cheap
+        from PIL import Image
 
         height, width = crop.shape[:2]
         if height == 0 or width == 0:
@@ -323,7 +324,7 @@ class OnnxCtcEngine:
         return normalized[np.newaxis, np.newaxis, :, :]
 
 
-def build_engine(settings) -> OcrEngine:
+def build_engine(settings: Settings) -> OcrEngine:
     """Construct the engine selected by configuration.
 
     Args:
@@ -341,7 +342,9 @@ def build_engine(settings) -> OcrEngine:
     if resolved == "fake":
         logger.warning(
             "using_fake_engine",
-            reason="no recognition model found" if settings.varnam_engine == "auto" else "configured",
+            reason=(
+                "no recognition model found" if settings.varnam_engine == "auto" else "configured"
+            ),
             model_dir=str(settings.model_dir),
         )
         return FakeOcrEngine()
@@ -352,5 +355,6 @@ def build_engine(settings) -> OcrEngine:
         settings.charset_path,
         threads=settings.ort_intra_op_threads,
     )
-    logger.info("engine_startup", engine=engine.name, ms=round((time.perf_counter() - started) * 1000, 1))
+    elapsed_ms = round((time.perf_counter() - started) * 1000, 1)
+    logger.info("engine_startup", engine=engine.name, ms=elapsed_ms)
     return engine

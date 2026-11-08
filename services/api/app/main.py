@@ -10,12 +10,13 @@ from __future__ import annotations
 
 import time
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from starlette.responses import Response
 
 from app import __version__
 from app.config import Settings, get_settings
@@ -43,7 +44,7 @@ original upload, so highlights line up without client-side math.
 """.strip()
 
 
-def create_app(
+def create_app(  # noqa: PLR0915 - a factory is a flat, readable wiring list by design
     settings: Settings | None = None,
     *,
     engine: OcrEngine | None = None,
@@ -123,7 +124,9 @@ def create_app(
     app.add_middleware(GZipMiddleware, minimum_size=1024)
 
     @app.middleware("http")
-    async def _observe(request: Request, call_next):
+    async def _observe(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         """Attach a request id, time the request, and record metrics.
 
         Args:
@@ -165,7 +168,9 @@ def create_app(
         return response
 
     @app.middleware("http")
-    async def _security_headers(request: Request, call_next):
+    async def _security_headers(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         """Add baseline security headers to every response.
 
         Args:
@@ -181,7 +186,9 @@ def create_app(
         response.headers.setdefault("Referrer-Policy", "no-referrer")
         # API responses are never documents; a restrictive CSP costs nothing and
         # prevents an XSS from being escalated through a reflected text/plain body.
-        response.headers.setdefault("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+        response.headers.setdefault(
+            "Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'"
+        )
         if resolved_settings.is_production:
             response.headers.setdefault(
                 "Strict-Transport-Security", "max-age=31536000; includeSubDomains"

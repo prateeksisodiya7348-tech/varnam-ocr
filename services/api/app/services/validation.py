@@ -166,7 +166,7 @@ def count_pdf_pages(data: bytes, *, max_pages: int) -> int:
     actionable message instead of a 500.
     """
     try:
-        import pypdfium2 as pdfium  # noqa: PLC0415 - optional dependency
+        import pypdfium2 as pdfium
     except ImportError as exc:
         raise UnsupportedMediaError(
             "PDF support is not enabled on this deployment. "

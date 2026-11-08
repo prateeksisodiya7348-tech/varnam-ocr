@@ -15,6 +15,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol
 
+from app.config import Settings
 from app.core.errors import VarnamError
 from app.core.logging import get_logger
 
@@ -105,7 +106,7 @@ class R2Storage:
         bucket: str,
     ) -> None:
         try:
-            import boto3  # noqa: PLC0415 - optional, only needed for R2
+            import boto3
         except ImportError as exc:
             raise StorageError("boto3 is required for R2 storage.") from exc
 
@@ -137,7 +138,7 @@ class R2Storage:
         self._client.delete_object(Bucket=self.bucket, Key=key)
 
 
-def build_storage(settings) -> StorageBackend:
+def build_storage(settings: Settings) -> StorageBackend:
     """Construct the storage backend named by configuration.
 
     Args:

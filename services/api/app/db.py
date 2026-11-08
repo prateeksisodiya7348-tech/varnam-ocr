@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from functools import lru_cache
+from typing import Any
 
 from sqlalchemy import event
 from sqlalchemy.engine import Engine as SAEngine
@@ -39,7 +40,7 @@ def _configure_sqlite(engine: SAEngine) -> None:
     """
 
     @event.listens_for(engine, "connect")
-    def _on_connect(dbapi_connection, _record) -> None:  # pragma: no cover - driver hook
+    def _on_connect(dbapi_connection: Any, _record: Any) -> None:  # pragma: no cover - driver hook
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA journal_mode=WAL")
         cursor.execute("PRAGMA busy_timeout=5000")

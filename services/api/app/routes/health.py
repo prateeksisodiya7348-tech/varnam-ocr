@@ -89,6 +89,6 @@ def metrics(request: Request) -> Response:
 
 def _version() -> str:
     """Return the package version without importing the app package lazily twice."""
-    from app import __version__  # noqa: PLC0415 - avoids a circular import at module load
+    from app import __version__
 
     return __version__

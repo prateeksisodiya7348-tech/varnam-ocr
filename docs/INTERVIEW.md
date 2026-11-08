@@ -42,8 +42,11 @@ exercise, and I say that plainly rather than pretending Tesseract doesn't exist.
 Size and cold start. PyTorch CPU wheels are ~900MB installed; onnxruntime is
 ~40MB. On a 512MB free instance, PyTorch simply does not fit alongside the model
 and the web framework. ONNX also gives INT8 quantization for free via
-`quantize_dynamic`, taking the recognizer from ~17MB to ~4MB with a CER cost I
-measure
+`quantize_dynamic`, which in principle takes the recognizer from ~17MB to ~4MB.
+In practice dynamic INT8 rewrites Conv into `ConvInteger`, which onnxruntime's
+CPU provider does not implement — so the exporter load-tests the quantized graph
+and ships the float model (15.9MB) when it fails. A model that boots beats a
+quarter-size model that crashes, and the fallback is verified, not assumed.
 (a parity check fails the export at >5% prediction disagreement). PyTorch stays
 where it belongs: training.
 
