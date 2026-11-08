@@ -44,13 +44,19 @@ if blueprint_path.exists():
     services = blueprint.get("services") or []
 
     require(bool(databases), "no `databases:` block - DATABASE_URL would come from nowhere")
-    require(len(services) == 1, f"expected exactly one service, found {len(services)}")
+
+    # The blueprint defines two services: the Docker API and a static frontend.
+    docker_services = [s for s in services if s.get("runtime") == "docker"]
+    static_services = [s for s in services if s.get("runtime") == "static"]
+
+    require(len(docker_services) == 1, f"expected one docker service, found {len(docker_services)}")
+    require(len(static_services) <= 1, f"expected at most one static service, found {len(static_services)}")
 
     db_name = databases[0].get("name") if databases else None
     notes.append(f"database: {db_name}")
 
-    if services:
-        service = services[0]
+    if docker_services:
+        service = docker_services[0]
         require(service.get("runtime") == "docker", "service runtime must be `docker`")
         require(
             service.get("dockerfilePath") == "./services/api/Dockerfile",
@@ -73,6 +79,19 @@ if blueprint_path.exists():
             "DATABASE_URL.fromDatabase must reference the database above",
         )
         require("CORS_ORIGINS" in env_vars, "CORS_ORIGINS is not configured")
+
+    if static_services:
+        static_service = static_services[0]
+        require(
+            "NEXT_OUTPUT=export" in (static_service.get("buildCommand") or ""),
+            "static build command must set NEXT_OUTPUT=export",
+        )
+        static_env = {item.get("key") for item in static_service.get("envVars", [])}
+        require(
+            "NEXT_PUBLIC_API_BASE_URL" in static_env,
+            "static site has no NEXT_PUBLIC_API_BASE_URL",
+        )
+        notes.append(f"static  : {static_service.get('name')}")
 
 # ------------------------------------------------------------------ Dockerfile
 dockerfile = ROOT / "services" / "api" / "Dockerfile"

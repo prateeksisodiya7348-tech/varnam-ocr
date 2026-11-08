@@ -1,9 +1,10 @@
-# Render Blueprint - creates the database AND the API in one click.
+# Render Blueprint - creates the database, the API, and the static frontend.
 #
-# The point of this file is that a deploy needs NO manually copied secrets:
-# Render provisions the Postgres instance and injects its connection string into
-# DATABASE_URL via `fromDatabase`. The only variable left to change by hand is
-# CORS_ORIGINS, and only after the frontend exists.
+# Goal: a deploy needs ZERO manually copied secrets or URLs.
+#   * Postgres is provisioned here and injected into DATABASE_URL.
+#   * Both public hostnames are derived from the service names, so the API can
+#     allow the frontend origin and the frontend can point at the API without
+#     anyone copy-pasting anything.
 #
 # Free-tier reality, encoded here rather than in a wiki nobody reads:
 #   * 512 MB RAM -> one uvicorn worker, one ORT thread, float32 model (16 MB).
@@ -20,6 +21,7 @@ databases:
     region: singapore
 
 services:
+  # ---------------------------------------------------------------- backend
   - type: web
     name: varnam-ocr-api
     runtime: docker
@@ -53,6 +55,20 @@ services:
         fromDatabase:
           name: varnam-ocr-db
           property: connectionString
-      # Replace with the Vercel URL after the frontend is deployed.
+      # Both origins are known up front, so CORS needs no post-deploy step.
+      # The static site's hostname is derived from its service name below.
       - key: CORS_ORIGINS
-        value: http://localhost:3000
+        value: http://localhost:3000,https://varnam-ocr-web.onrender.com
+
+  # --------------------------------------------------------------- frontend
+  - type: web
+    name: varnam-ocr-web
+    runtime: static
+    # NEXT_OUTPUT=export switches next.config.ts to a fully static `out/` build;
+    # static hosting cannot run Next's middleware or header pipeline.
+    buildCommand: pnpm install && NEXT_OUTPUT=export pnpm --filter @varnam/web build
+    staticPublishPath: ./apps/web/out
+    pullRequestPreviewsEnabled: false
+    envVars:
+      - key: NEXT_PUBLIC_API_BASE_URL
+        value: https://varnam-ocr-api.onrender.com
