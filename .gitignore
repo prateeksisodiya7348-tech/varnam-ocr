@@ -24,6 +24,8 @@ data/
 models/
 *.onnx
 *.db
+*.db-wal
+*.db-shm
 *.sqlite3
 uploads/
 benchmarks/RESULTS.md
