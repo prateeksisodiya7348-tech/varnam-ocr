@@ -3,6 +3,8 @@
 **Production-grade optical character recognition for the Devanagari script** — printed and handwritten Hindi, Marathi, Nepali and Sanskrit — with a typed API, a real web app, measured accuracy, and a deployment that fits entirely on free infrastructure.
 
 > One line: *upload a photo of a Devanagari page, get editable text back with per-line confidence and pixel-accurate bounding boxes.*
+>
+> **New here?** Read [`docs/RUNBOOK.md`](docs/RUNBOOK.md) — the complete start-to-finish procedure: setup → data → train → export → run → verify → measure → deploy.
 
 ---
 
