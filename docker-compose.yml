@@ -1,0 +1,55 @@
+# Local development stack: API + Postgres.
+#
+# The API defaults to SQLite, so Postgres here is optional — it exists so that
+# "works on my machine" includes the production engine. Bring it up with:
+#   docker compose up --build
+#
+# `DATABASE_URL` below points at the container, not at the host, because it is
+# resolved inside the compose network.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: varnam
+      POSTGRES_PASSWORD: varnam
+      POSTGRES_DB: varnam
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # The API must wait for a real accepting socket, not just a running process.
+      test: ["CMD-SHELL", "pg_isready -U varnam -d varnam"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      # Context is the repo root because the image needs packages/devanagari_text.
+      context: .
+      dockerfile: services/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql+psycopg://varnam:varnam@db:5432/varnam
+      VARNAM_ENGINE: fake
+      MODEL_DIR: /app/models
+      CORS_ORIGINS: http://localhost:3000
+      RATE_LIMIT_PER_MINUTE: "120"
+      STORAGE_BACKEND: local
+      LOCAL_STORAGE_DIR: /app/uploads
+    ports:
+      - "8000:8000"
+    volumes:
+      # Bind-mount the model dir so a newly exported rec.onnx is picked up on
+      # restart without rebuilding the image.
+      - ./services/api/models:/app/models:ro
+
+volumes:
+  pgdata:

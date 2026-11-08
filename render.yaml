@@ -1,0 +1,53 @@
+# Render blueprint for the OCR API.
+#
+# Apply with: Render Dashboard -> New -> Blueprint -> point at this repo.
+#
+# Free-tier reality, encoded here rather than in a wiki page nobody reads:
+#   * 512 MB RAM  -> one uvicorn worker, one ORT thread, INT8 model only.
+#   * sleeps after ~15 min idle -> /health/ready gates traffic while it boots.
+#   * no persistent disk -> uploads go to R2 (or are not retained at all).
+#   * single instance -> in-process rate limiting is exact (see LIMITATIONS.md).
+services:
+  - type: web
+    name: varnam-ocr-api
+    runtime: docker
+    plan: free
+    region: singapore
+    # Build context must be the repo root: the image needs both services/api and
+    # the shared packages/devanagari_text directory.
+    dockerfilePath: ./services/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health/ready
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: VARNAM_ENGINE
+        value: auto
+      - key: MODEL_DIR
+        value: /app/models
+      - key: ORT_INTRA_OP_THREADS
+        value: "1"
+      - key: MAX_UPLOAD_MB
+        value: "10"
+      - key: MAX_IMAGE_LONG_EDGE
+        value: "2000"
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "20"
+      - key: STORAGE_BACKEND
+        value: r2
+      # Set these in the dashboard; sync:false keeps them out of git.
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        sync: false
+      - key: API_SHARED_SECRET
+        sync: false

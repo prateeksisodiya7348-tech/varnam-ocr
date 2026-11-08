@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+/*
+ * Tailwind v4 theme tokens.
+ *
+ * v4 is CSS-first: these custom properties replace tailwind.config.js and are
+ * available as utilities (e.g. bg-surface, text-ink). Dark mode is driven by the
+ * `.dark` class on <html> so it can be toggled without a flash of the wrong theme.
+ */
+@theme {
+  --color-paper: #fbf8f3;
+  --color-surface: #ffffff;
+  --color-ink: #1b1a17;
+  --color-muted: #6b6a63;
+  --color-line: #e4ded2;
+  --color-saffron: #e07a1f;
+  --color-saffron-soft: #fdf0e2;
+  --color-indigo: #29405f;
+
+  --font-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Noto Sans Devanagari", sans-serif;
+  --font-devanagari: "Noto Sans Devanagari", "Mangal", ui-sans-serif, sans-serif;
+
+  --radius-card: 0.875rem;
+}
+
+/* Explicit dark palette: every token used by a component is redefined here, so a
+   missing override shows up as an obvious colour bug rather than subtle contrast
+   failure. */
+.dark {
+  --color-paper: #12120f;
+  --color-surface: #1b1b17;
+  --color-ink: #f2efe7;
+  --color-muted: #a5a29a;
+  --color-line: #2e2d28;
+  --color-saffron: #f0994a;
+  --color-saffron-soft: #2a1f14;
+  --color-indigo: #a9c1e2;
+}
+
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  /* Devanagari needs slightly looser leading: matras and reph overlap a tight
+     line-height in a way Latin never does. */
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Devanagari text should always render in a font that has real conjunct shaping
+   rules; system fallbacks often replace conjuncts with visibly wrong glyphs. */
+.devanagari {
+  font-family: var(--font-devanagari);
+  font-feature-settings: "kern" 1, "liga" 1;
+}
+
+/* Visible keyboard focus is non-negotiable for accessibility. */
+:focus-visible {
+  outline: 2px solid var(--color-saffron);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

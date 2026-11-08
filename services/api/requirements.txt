@@ -1,0 +1,35 @@
+# Runtime dependencies for the API, pinned exactly.
+# Kept as a flat requirements file (rather than resolving from pyproject at
+# image build time) because the Docker build must be byte-reproducible and must
+# not depend on a resolver reaching the network with a different result.
+#
+# Regenerate deliberately: `uv pip compile requirements.in -o requirements.txt`
+
+# --- web framework ---------------------------------------------------------
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+pydantic==2.10.4
+pydantic-settings==2.7.0
+
+# --- persistence -----------------------------------------------------------
+sqlmodel==0.0.22
+SQLAlchemy==2.0.36
+
+# --- imaging / numerics ----------------------------------------------------
+pillow==11.1.0
+numpy==2.2.1
+
+# --- inference -------------------------------------------------------------
+# CPU-only build; the GPU wheel is 10x larger and would not fit a free instance.
+onnxruntime==1.20.1
+
+# --- observability ---------------------------------------------------------
+structlog==24.4.0
+
+# --- optional, enabled per deployment --------------------------------------
+# PDF page rendering (~4MB). Comment out to shrink the image when PDFs are not
+# served; the API degrades to a precise 415 rather than crashing.
+pypdfium2==4.30.0
+# Cloudflare R2 / S3 storage.
+boto3==1.35.93

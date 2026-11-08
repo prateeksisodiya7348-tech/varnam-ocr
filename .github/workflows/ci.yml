@@ -1,0 +1,98 @@
+name: CI
+
+# Runs on every push and PR. The gate order is deliberate: cheapest and most
+# deterministic checks first, so a lint failure does not burn four minutes of
+# dependency installation for the frontend.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # A superseded run on the same branch is wasted minutes; cancel it.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API (lint, types, tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/api
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/api/requirements*.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Ruff (lint)
+        run: ruff check .
+
+      - name: Ruff (format check)
+        run: ruff format --check .
+
+      - name: Mypy (types)
+        run: mypy app
+
+      - name: Pytest with coverage gate
+        env:
+          # The shared package is a path-mounted module, same mechanism as Docker.
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/packages
+        run: pytest -q --cov=app --cov-report=term-missing --cov-fail-under=75
+
+  web:
+    name: Web (lint, types, tests, build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile=false
+
+      - name: Lint
+        run: pnpm --filter @varnam/web lint
+
+      - name: Typecheck
+        run: pnpm --filter @varnam/web typecheck
+
+      - name: Unit tests
+        run: pnpm --filter @varnam/web test
+
+      - name: Build
+        run: pnpm --filter @varnam/web build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: https://varnam-ocr-api.onrender.com
+
+  docker:
+    name: Docker image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/api/Dockerfile
+          push: false
+          # Cache layers between runs; the pip install step dominates build time.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

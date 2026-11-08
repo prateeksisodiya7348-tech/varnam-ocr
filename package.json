@@ -1,0 +1,19 @@
+{
+  "name": "varnam-ocr",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Varnam OCR - production-grade Devanagari script OCR (printed + handwritten).",
+  "packageManager": "pnpm@9.12.3",
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @varnam/web dev",
+    "build": "pnpm --filter @varnam/web build",
+    "start": "pnpm --filter @varnam/web start",
+    "lint": "pnpm --filter @varnam/web lint",
+    "typecheck": "pnpm --filter @varnam/web typecheck",
+    "test": "pnpm --filter @varnam/web test",
+    "e2e": "pnpm --filter @varnam/web e2e"
+  }
+}

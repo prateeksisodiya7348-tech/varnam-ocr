@@ -1,0 +1,66 @@
+name: Deploy
+
+# Manual or tag-triggered deployment. Both platforms build from the same commit,
+# which is why this is one workflow instead of two.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  api:
+    name: Deploy API to Render
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trigger Render deploy hook
+        env:
+          # Create this in Render: Settings -> Deploy Hook. Store it as a repo secret.
+          DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$DEPLOY_HOOK" ]; then
+            echo "::error::RENDER_DEPLOY_HOOK_URL secret is not set."
+            exit 1
+          fi
+          curl -fsS -X POST "$DEPLOY_HOOK"
+
+      - name: Wait for readiness
+        env:
+          API_URL: ${{ secrets.API_BASE_URL }}
+        run: |
+          # A free instance takes 30-60s to boot after a deploy; poll rather than
+          # sleep a fixed time, so a fast deploy is not padded and a slow one is
+          # not declared dead prematurely.
+          for attempt in $(seq 1 30); do
+            if curl -fsS "$API_URL/health/ready" > /dev/null; then
+              echo "API is ready (attempt $attempt)."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::API did not become ready within 150s."
+          exit 1
+
+  web:
+    name: Deploy web to Vercel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Deploy to Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          # --prod on a tag push; previews are created automatically by Vercel's
+          # own Git integration, so this only handles production promotion.
+          npx vercel@latest deploy --prod --yes \
+            --token "$VERCEL_TOKEN" \
+            --scope "$VERCEL_ORG_ID" \
+            --cwd apps/web

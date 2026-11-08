@@ -1,0 +1,6 @@
+# pnpm workspace definition.
+# Only the web app lives in the Node workspace; the Python services are
+# managed separately by `uv` because they have an entirely different
+# dependency graph (FastAPI / onnxruntime vs. React / Next.js).
+packages:
+  - "apps/*"
