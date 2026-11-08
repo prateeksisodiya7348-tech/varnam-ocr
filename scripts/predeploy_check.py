@@ -132,6 +132,29 @@ if tracked:
             f"{required_file} is not committed - Render will not see it",
         )
 
+    # Every importable module must be in git. A `.gitignore` entry like `models/`
+    # or `data/` also matches Python packages (services/api/app/models,
+    # ml/data); they keep working locally and vanish from the image, so the
+    # container dies at import time with ModuleNotFoundError.
+    missing_modules: list[str] = []
+    for package_dir in (
+        ROOT / "services" / "api" / "app",
+        ROOT / "ml",
+        ROOT / "packages",
+    ):
+        for path in package_dir.rglob("*.py"):
+            if "__pycache__" in path.parts:
+                continue
+            relative = path.relative_to(ROOT).as_posix()
+            if relative not in tracked:
+                missing_modules.append(relative)
+
+    require(
+        not missing_modules,
+        f"{len(missing_modules)} Python file(s) are not committed and will break the "
+        f"container: {', '.join(sorted(missing_modules)[:5])}",
+    )
+
 # --------------------------------------------------------------------- report
 print("Pre-deploy check\n")
 for note in notes:

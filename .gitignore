@@ -19,16 +19,26 @@ out/
 *.tsbuildinfo
 next-env.d.ts
 
-# --- Local data & artifacts ---
-data/
-models/
-*.onnx
+# --- Local data & artifacts -------------------------------------------------
+# Anchored with a leading slash on purpose. A bare `models/` or `data/` pattern
+# also matches services/api/app/models/ and ml/data/ - which are Python packages.
+# That silently kept them out of git while every local test still passed, and the
+# container died with "No module named 'app.models'". Anchor every ignore rule
+# that names a directory.
+/artifacts/
+/data/
+/uploads/
+/services/api/uploads/
+benchmarks/RESULTS.md
+
+# --- Local database ---
 *.db
 *.db-wal
 *.db-shm
 *.sqlite3
-uploads/
-benchmarks/RESULTS.md
+
+# The serving model (services/api/models/) IS committed - it is what the Docker
+# image ships. Never ignore that directory.
 
 # --- Secrets & env ---
 .env
