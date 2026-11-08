@@ -106,7 +106,7 @@ def init_db(*, attempts: int = _INIT_ATTEMPTS) -> bool:
             SQLModel.metadata.create_all(get_engine())
             logger.info("database_ready", attempt=attempt)
             return True
-        except Exception as exc:  # noqa: BLE001 - any driver error is retryable here
+        except Exception as exc:
             last_error = str(exc)[:200]
             if attempt == attempts:
                 break
