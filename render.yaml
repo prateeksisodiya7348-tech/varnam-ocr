@@ -34,8 +34,11 @@ services:
         value: "2000"
       - key: RATE_LIMIT_PER_MINUTE
         value: "20"
+      # Local disk on a free instance is ephemeral: uploaded images disappear on
+      # redeploy, but OCR results live in Postgres so the app keeps working.
+      # Switch to `r2` once the four R2_* variables below are filled in.
       - key: STORAGE_BACKEND
-        value: r2
+        value: local
       # Set these in the dashboard; sync:false keeps them out of git.
       - key: DATABASE_URL
         sync: false
