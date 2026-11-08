@@ -8,14 +8,17 @@ contract Render expects.
 
 from __future__ import annotations
 
+import os
 import time
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.staticfiles import StaticFiles
 from starlette.responses import Response
 
 from app import __version__
@@ -106,9 +109,11 @@ def create_app(  # noqa: PLR0915 - a factory is a flat, readable wiring list by 
         lifespan=lifespan,
         # Docs are useful in every environment for a portfolio project; the
         # write endpoints are rate limited regardless.
-        docs_url="/docs",
+        # Docs live under /api so they cannot collide with the frontend's own
+        # /docs page when the SPA is mounted at "/".
+        docs_url="/api/docs",
         redoc_url=None,
-        openapi_url="/openapi.json",
+        openapi_url="/api/openapi.json",
     )
 
     # Order matters: CORS must wrap everything, and gzip must sit outside the
@@ -201,15 +206,28 @@ def create_app(  # noqa: PLR0915 - a factory is a flat, readable wiring list by 
     app.include_router(ocr.router)
     app.include_router(feedback.router)
 
-    @app.get("/", include_in_schema=False)
-    def root() -> dict[str, str]:
-        """Human-friendly landing payload for anyone hitting the API root."""
-        return {
-            "name": "Varnam OCR",
-            "version": __version__,
-            "docs": "/docs",
-            "health": "/health/ready",
-        }
+    # The built frontend ships inside the image (see services/api/Dockerfile) and
+    # is served from the same origin, so the browser never makes a cross-origin
+    # request and CORS is irrelevant for normal use.
+    static_dir = Path(os.environ.get("STATIC_DIR", "/app/static"))
+    if static_dir.is_dir():
+        # Mounted LAST so every exact API route above takes precedence over it.
+        # html=True serves index.html for directories, which is what the static
+        # export produces for /app and /docs.
+        app.mount("/", StaticFiles(directory=static_dir, html=True), name="ui")
+        logger.info("serving_frontend", directory=str(static_dir))
+    else:
+        # Local development (or an API-only deployment): keep a JSON landing page
+        # so hitting the root still tells you what this service is.
+        @app.get("/", include_in_schema=False)
+        def root() -> dict[str, str]:
+            """Human-friendly landing payload for anyone hitting the API root."""
+            return {
+                "name": "Varnam OCR",
+                "version": __version__,
+                "docs": "/api/docs",
+                "health": "/health/ready",
+            }
 
     return app
 

@@ -174,7 +174,11 @@ def test_metrics_exposes_histogram(client: TestClient) -> None:
 
 
 def test_openapi_schema_is_valid(client: TestClient) -> None:
-    """The OpenAPI document must generate, because the web client is built from it."""
-    schema = client.get("/openapi.json").json()
+    """The OpenAPI document must generate, because the web client is built from it.
+
+    The schema lives under /api so it cannot collide with the frontend's own
+    /docs page when the built SPA is mounted at "/".
+    """
+    schema = client.get("/api/openapi.json").json()
     assert "/v1/ocr" in schema["paths"]
     assert "/v1/ocr/pdf" in schema["paths"]

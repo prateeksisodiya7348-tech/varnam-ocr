@@ -1,16 +1,20 @@
-# Render Blueprint - creates the database, the API, and the static frontend.
+# Render Blueprint - creates the database and the API.
 #
-# Goal: a deploy needs ZERO manually copied secrets or URLs.
-#   * Postgres is provisioned here and injected into DATABASE_URL.
-#   * Both public hostnames are derived from the service names, so the API can
-#     allow the frontend origin and the frontend can point at the API without
-#     anyone copy-pasting anything.
+# The API also serves the built frontend from `/`, so there is exactly ONE public
+# URL and no cross-origin configuration to get wrong:
+#
+#   https://varnam-ocr-api.onrender.com/app   <- the app
+#   https://varnam-ocr-api.onrender.com/v1/ocr
+#
+# An earlier revision also declared a separate static site for the frontend. That
+# introduced a second build pipeline, a second hostname, and a CORS dependency
+# between them - and its blueprint sync failed. One deployable is fewer moving
+# parts on a free tier.
 #
 # Free-tier reality, encoded here rather than in a wiki nobody reads:
 #   * 512 MB RAM -> one uvicorn worker, one ORT thread, float32 model (16 MB).
 #   * sleeps after ~15 min idle -> /health/ready gates traffic while it boots.
-#   * no persistent disk -> uploads live on local disk and vanish on redeploy.
-#     OCR results are in Postgres, so the app keeps working.
+#   * no persistent disk -> uploads vanish on redeploy; results live in Postgres.
 #   * free Postgres expires after 30 days unless upgraded - see docs/LIMITATIONS.md.
 
 databases:
@@ -21,14 +25,13 @@ databases:
     region: singapore
 
 services:
-  # ---------------------------------------------------------------- backend
   - type: web
     name: varnam-ocr-api
     runtime: docker
     plan: free
     region: singapore
-    # Build context must be the repo root: the image needs both services/api and
-    # the shared packages/devanagari_text directory.
+    # Build context must be the repo root: the image needs services/api, the
+    # shared packages/devanagari_text, and apps/web (built in a Node stage).
     dockerfilePath: ./services/api/Dockerfile
     dockerContext: .
     healthCheckPath: /health/ready
@@ -55,20 +58,7 @@ services:
         fromDatabase:
           name: varnam-ocr-db
           property: connectionString
-      # Both origins are known up front, so CORS needs no post-deploy step.
-      # The static site's hostname is derived from its service name below.
+      # The UI is served from this same origin, so the only extra origin needed
+      # is the local dev server.
       - key: CORS_ORIGINS
-        value: http://localhost:3000,https://varnam-ocr-web.onrender.com
-
-  # --------------------------------------------------------------- frontend
-  - type: web
-    name: varnam-ocr-web
-    runtime: static
-    # NEXT_OUTPUT=export switches next.config.ts to a fully static `out/` build;
-    # static hosting cannot run Next's middleware or header pipeline.
-    buildCommand: pnpm install && NEXT_OUTPUT=export pnpm --filter @varnam/web build
-    staticPublishPath: ./apps/web/out
-    pullRequestPreviewsEnabled: false
-    envVars:
-      - key: NEXT_PUBLIC_API_BASE_URL
-        value: https://varnam-ocr-api.onrender.com
+        value: http://localhost:3000
